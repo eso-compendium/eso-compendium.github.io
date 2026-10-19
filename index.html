@@ -2593,7 +2593,20 @@ function sizeDrawer() {
   const vw = document.documentElement.clientWidth, px = Math.min(Math.max(state.fitPx || 1000, 1000), vw / .34);
   dw.style.setProperty('--dpx', px + 'px');
   setVars(dw);
+  followVV();
 }
+/* pinch zoom (spec §12.23 point 61): the drawer hangs on the layout viewport, so with a pinch zoom it would open off screen and be scaled up with the page.
+   It follows the visual viewport instead: at the right edge of the part of the page that is on screen, over its full height, scaled by 1 / scale so it is as big on screen as without a pinch zoom.
+   At scale 1 nothing is set (the CSS decides), and without window.visualViewport nothing changes. The buttons − / + and the browser zoom do not change the visual viewport scale. */
+function followVV() {
+  const dw = $('#dwrap'), vv = window.visualViewport; if (!dw) return;
+  const st = dw.style, reset = () => { ['top', 'right', 'bottom', 'height', 'transform', 'transformOrigin'].forEach(k => { st[k] = ''; }); };
+  if (!vv || !vv.scale || Math.abs(vv.scale - 1) < .01 || !dw.classList.contains('open')) { reset(); return; }
+  const s = vv.scale, lw = document.documentElement.clientWidth;
+  st.top = vv.offsetTop + 'px'; st.right = Math.max(0, lw - (vv.offsetLeft + vv.width)) + 'px'; st.bottom = 'auto';
+  st.height = (vv.height * s) + 'px'; st.transformOrigin = 'top right'; st.transform = 'scale(' + (1 / s) + ')';
+}
+if (window.visualViewport && !D.page) { ['resize', 'scroll'].forEach(ev => window.visualViewport.addEventListener(ev, followVV)); }
 /* ---------- zoom ---------- */
 let started = false;
 function applyPx() {
